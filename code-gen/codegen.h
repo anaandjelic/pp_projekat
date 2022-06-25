@@ -19,4 +19,7 @@ void gen_cmp(int operand1_index, int operand2_index);
 // generise MOV naredbu, parametri su indeksi operanada u TS-a 
 void gen_mov(int input_index, int output_index);
 
+// generise MOV naredbu dodele lokacije, parametri su indeksi operanada u TS-a 
+void gen_ptr_mov(int input_index, int output_index);
+
 #endif

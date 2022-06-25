@@ -49,6 +49,9 @@
 %nonassoc ONLY_IF
 %nonassoc _ELSE
 
+%nonassoc ONLY_ID
+%nonassoc _AMPERSAND
+%token _ASTERISK
 %%
 
 program
@@ -148,37 +151,75 @@ assignment_statement
         int idx = lookup_symbol($1, VAR|PAR);
         if(idx == NO_INDEX)
           err("invalid lvalue '%s' in assignment", $1);
-        else
-          if(get_type(idx) != get_type($3))
-            err("incompatible types in assignment");
-        gen_mov($3, idx);
+          
+        else {
+          if(get_type(idx) != get_type($3)) {
+          	err("incompatible types in assignment");
+          }
+          else {
+          	gen_mov($3, idx);
+          }
+        }
       }
   ;
 
 num_exp
   : exp
 
+	// & exp
+  | _AMPERSAND exp
+      {
+		    $$ = take_reg();
+      	code("\n\t\tLOAD\t");
+				gen_sym_name($2);
+				code(",");
+				gen_sym_name($$);
+		    set_atr2($$, $2);
+		    set_type($$, get_type($2)+2);
+      }
+
+
+	// * exp
+  | _ASTERISK exp
+      {
+        if(get_type($2) != PINT && get_type($2) != PUINT)
+          err("operator can't be dereferenced");
+          
+		    $$ = take_reg();
+      	code("\n\t\tUNLOAD\t");
+				gen_sym_name($2);
+				code(",");
+				gen_sym_name($$);
+		    set_type($$, get_type($2)-2);
+      }
+  
+  
   | num_exp _AROP exp
       {
-        if(get_type($1) != get_type($3))
-          err("invalid operands: arithmetic operation");
-        int t1 = get_type($1);    
-        code("\n\t\t%s\t", ar_instructions[$2 + (t1 - 1) * AROP_NUMBER]);
-        gen_sym_name($1);
-        code(",");
-        gen_sym_name($3);
-        code(",");
-        free_if_reg($3);
-        free_if_reg($1);
-        $$ = take_reg();
-        gen_sym_name($$);
-        set_type($$, t1);
+		    printf("\n\n%d, %s\n", get_type($1),get_name($1));
+		    printf("%d, %s\n", get_type($3),get_name($3));
+		    if (get_type($1) != get_type($3)) {
+		      err("invalid operands: arithmetic operation");
+        }
+        else {
+		      int t1 = get_type($1);    
+		      code("\n\t\t%s\t", ar_instructions[$2 + (t1 - 1) * AROP_NUMBER]);
+		      gen_sym_name($1);
+		      code(",");
+		      gen_sym_name($3);
+		      code(",");
+		      free_if_reg($3);
+		      free_if_reg($1);
+		      $$ = take_reg();
+		      gen_sym_name($$);
+		      set_type($$, t1);
+        }
       }
   ;
 
 exp
   : literal
-
+	
   | _ID
       {
         $$ = lookup_symbol($1, VAR|PAR);

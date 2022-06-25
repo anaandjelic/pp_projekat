@@ -43,11 +43,16 @@ typedef struct _Source {
     int address;    //adresa linije u segmentu koda
 } Source;
 
+typedef struct Content {
+		word value;
+		int32_t* address;
+} Content;
+
 //operand naredbe
 typedef struct _Operand {
     uchar kind;     //vrtsa operanda
     uchar reg;      //(dodatni) registar za operand
-    word data;      //sadržaj operanda
+    Content data;   //sadržaj operanda
 } Operand;
 
 //naredba
@@ -99,8 +104,8 @@ void check_labels();
 void init_simulator();
 word* getmem(word address);
 char type_char(uchar type);
-word get_operand(Operand op);
-void set_operand(Operand op, word data);
+Content get_operand(Operand op);
+void set_operand(Operand op, Content data);
 void set_flags_signed(quad result);
 void set_flags_unsigned(uquad result);
 void run_once();

@@ -10,9 +10,11 @@
 
 [ \t\n]+             { /* skip */ }
 
+"if"                 { return _IF; }
+"int*"               { yylval.i = PINT;  return _TYPE; }
+"unsigned*"          { yylval.i = PUINT; return _TYPE; }
 "int"                { yylval.i = INT;  return _TYPE; }
 "unsigned"           { yylval.i = UINT; return _TYPE; }
-"if"                 { return _IF; }
 "else"               { return _ELSE; }
 "return"             { return _RETURN; }
 
@@ -25,6 +27,9 @@
 
 "+"                  { yylval.i = ADD; return _AROP; }
 "-"                  { yylval.i = SUB; return _AROP; }
+
+"*"             		 { return _ASTERISK; }
+"&"			             { return _AMPERSAND; }
 
 "<"                  { yylval.i = LT; return _RELOP; }
 ">"                  { yylval.i = GT; return _RELOP; }

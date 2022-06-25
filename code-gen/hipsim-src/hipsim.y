@@ -77,6 +77,8 @@ int mainarg = 0;
 %token <i> _MUL
 %token <i> _DIV
 %token _MOV
+%token _LOAD
+%token _UNLOAD
 %token _HALT
 
 %token <i> _REGISTER
@@ -178,6 +180,20 @@ arithmetic
         {
             insert_source("\t\t\tMOV %s, %s", $2, $4);
             insert_code(INS_MOV, NO_TYPE, yylineno);
+            free($2); free($4);
+        }
+        
+    |   _LOAD input _COMMA output
+        {
+            insert_source("\t\t\tLOAD %s, %s", $2, $4);
+            insert_code(INS_LOAD, NO_TYPE, yylineno);
+            free($2); free($4);
+        }
+        
+    |   _UNLOAD input _COMMA output
+        {
+            insert_source("\t\t\tUNLOAD %s, %s", $2, $4);
+            insert_code(INS_UNLOAD, NO_TYPE, yylineno);
             free($2); free($4);
         }
     ;

@@ -71,6 +71,8 @@ MULU    { yylval.i = UNSIGNED_TYPE; return _MUL; }
 DIVS    { yylval.i = SIGNED_TYPE; return _DIV; }
 DIVU    { yylval.i = UNSIGNED_TYPE; return _DIV; }
 MOV     { return _MOV; }
+LOAD    { return _LOAD; }
+UNLOAD  { return _UNLOAD; }
 HALT    { return _HALT; }
 
 "%"{digit}{1,2}  { yylval.i = atoi(yytext+1); return _REGISTER; }
