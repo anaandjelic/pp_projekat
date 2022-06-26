@@ -45,8 +45,13 @@ void gen_sym_name(int index) {
       else
         if(get_kind(index) == LIT)
           code("$%s", get_name(index));
-        else //function, reg
-          code("%s", get_name(index));
+        else
+        	if(get_kind(index) == ARRAY) {
+        		code("-%d(%%14)", (get_atr1(get_atr1(index)) + get_atr2(index)) * 4);
+        		
+        	}
+        	else //function, reg
+          	code("%s", get_name(index));
   }
 }
 

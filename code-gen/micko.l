@@ -8,6 +8,9 @@
 
 %%
 
+"]"			             { return _RSB; }
+"["			             { return _LSB; }
+
 [ \t\n]+             { /* skip */ }
 
 "if"                 { return _IF; }
@@ -27,6 +30,7 @@
 "="                  { return _ASSIGN; }
 
 "++"                 { return _INC; }
+","                  { return _COMMA; }
 "+"                  { yylval.i = ADD; return _AROP; }
 "-"                  { yylval.i = SUB; return _AROP; }
 

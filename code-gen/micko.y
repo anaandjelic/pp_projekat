@@ -1,4 +1,5 @@
 %{
+  #include <string.h>
   #include <stdio.h>
   #include <stdlib.h>
   #include "defs.h"
@@ -16,10 +17,14 @@
   int error_count = 0;
   int warning_count = 0;
   int var_num = 0;
+  int arr_num = 0;
   int fun_idx = -1;
   int fcall_idx = -1;
   int lab_num = -1;
   int loop_num = -1;
+  int array_first_elem = -1;
+  int array_elem_num = -1;
+  int iterator = 0;
   FILE *output;
 %}
 
@@ -51,6 +56,10 @@
 
 %nonassoc ONLY_IF
 %nonassoc _ELSE
+
+%token _LSB
+%token _RSB
+%token _COMMA
 
 %nonassoc _AMPERSAND
 %token _ASTERISK
@@ -110,7 +119,7 @@ body
   : _LBRACKET variable_list
       {
         if(var_num)
-          code("\n\t\tSUBS\t%%15,$%d,%%15", 4*var_num);
+          code("\n\t\tSUBS\t%%15,$%d,%%15", 4*(var_num+arr_num));
         code("\n@%s_body:", get_name(fun_idx));
       }
     statement_list _RBRACKET
@@ -118,18 +127,80 @@ body
 
 variable_list
   : /* empty */
-  | variable_list variable
+  | variable_list variable 
   ;
 
 variable
   : _TYPE _ID _SEMICOLON
       {
         if(lookup_symbol($2, VAR|PAR) == NO_INDEX)
-           insert_symbol($2, VAR, $1, ++var_num, NO_ATR);
+           insert_symbol($2, VAR, $1, ++var_num, 0);
         else 
            err("redefinition of '%s'", $2);
       }
+  | _TYPE _LSB literal _RSB _ID _SEMICOLON
+      {
+        if(get_type($3) == UINT)
+          err("invalid index value");
+      	int idx;
+        if(lookup_symbol($5, VAR|PAR|ARRAY) == NO_INDEX)
+           idx = insert_symbol($5, ARRAY, $1, ++var_num, NO_ATR);
+        else 
+           err("redefinition of '%s'", $5);
+        
+        int max = atoi(get_name($3));
+        if(max < 1) 
+           err("index out of bounds");
+        arr_num += max;
+        for (int i = 0; i < max; i++) {
+        	insert_symbol(strdup($5), ARRAY, $1, idx, i);
+        }
+      }
+      
+  | _TYPE _LSB literal _RSB _ID _ASSIGN _LBRACKET 
+  		{
+        if(get_type($3) == UINT)
+          err("invalid index value");
+      	int idx;
+        if(lookup_symbol($5, VAR|PAR|ARRAY) == NO_INDEX)
+           idx = insert_symbol($5, ARRAY, $1, ++var_num, NO_ATR);
+        else 
+           err("redefinition of '%s'", $5);
+        
+        int max = atoi(get_name($3));
+        if(max < 1) 
+           err("index out of bounds");
+        arr_num += max;
+        array_first_elem = idx + 1;
+        array_elem_num = max;
+        for (int i = 0; i < max; i++) {
+        	insert_symbol(strdup($5), ARRAY, $1, idx, i);
+        }
+        iterator = 0;
+  		}
+   	literal_list _RBRACKET _SEMICOLON { iterator = 0; }
   ;
+
+literal_list 
+	: literal
+			{
+				if (iterator > array_elem_num)
+           err("too many elements");
+				if (get_type($1) != get_type(array_first_elem + iterator))
+           err("incompatible types");
+        gen_mov($1, array_first_elem);
+        iterator++;
+			}
+	| literal_list _COMMA literal
+			{
+				if (iterator > array_elem_num)
+           err("too many elements");
+				if (get_type($3) != get_type(array_first_elem + iterator))
+           err("incompatible types");
+        gen_mov($3, array_first_elem + iterator);
+        iterator++;
+			}
+	;
 
 statement_list
   : /* empty */
@@ -153,7 +224,7 @@ for_statement
 			
 		_LPAREN _ID _ASSIGN literal 
 			{
-				int idx = lookup_symbol($4, VAR|PAR);
+				int idx = lookup_symbol($4, VAR|PAR|ARRAY);
         if(idx == NO_INDEX)
           err("'%s' undeclared", $4);
           
@@ -169,7 +240,7 @@ for_statement
 			
 		_SEMICOLON _ID _INC _RPAREN statement 
 			{
-				int idx = lookup_symbol($12, VAR|PAR);
+				int idx = lookup_symbol($12, VAR|PAR|ARRAY);
         if(idx == NO_INDEX)
           err("'%s' undeclared", $12);
         
@@ -192,23 +263,41 @@ compound_statement
 assignment_statement
   : _ID _ASSIGN num_exp _SEMICOLON
       {
-        int idx = lookup_symbol($1, VAR|PAR);
+        int idx = lookup_symbol($1, VAR|PAR|ARRAY);
         if(idx == NO_INDEX)
           err("invalid lvalue '%s' in assignment", $1);
           
         else {
-          if(get_type(idx) != get_type($3)) {
+          if(get_type(idx) != get_type($3)) 
           	err("incompatible types in assignment");
-          }
-          else {
+          else 
           	gen_mov($3, idx);
-          }
+        }
+      }
+  | _ID _LSB literal _RSB _ASSIGN num_exp _SEMICOLON
+      {
+        if(get_type($3) == UINT)
+          err("invalid index value");
+        int idx = lookup_symbol($1, ARRAY);
+        if(idx == NO_INDEX)
+          err("invalid lvalue '%s' in assignment", $1);
+        if(get_type(idx) != get_type($6)) 
+          err("incompatible types in assignment");
+          
+        else {
+        	int offset = atoi(get_name($3));
+        	int elem_index = idx - get_atr2(idx) + offset;
+        	
+          if(offset < 0 || offset > get_atr2(idx)) 
+          	err("index out of range");
+          else 
+          	gen_mov($6, elem_index);
         }
       }
   ;
 
 num_exp
-  : exp
+  : exp 
   
   | num_exp _AROP exp
       {
@@ -236,15 +325,37 @@ exp
 	
   | _ID
       {
-        $$ = lookup_symbol($1, VAR|PAR);
+        $$ = lookup_symbol($1, VAR|PAR|ARRAY);
         if($$ == NO_INDEX)
           err("'%s' undeclared", $1);
+        if(get_kind($$) == ARRAY) {
+		      err("invalid operand %s", get_name($$));
+        }
+      }
+	
+  | _ID _LSB literal _RSB
+      {
+        if(get_type($3) == UINT)
+          err("invalid index value");
+        int idx = lookup_symbol($1, ARRAY);
+        if(idx == NO_INDEX)
+          err("'%s' undeclared", $1);
+         
+        print_symtab();
+        int offset = atoi(get_name($3));
+        if(offset < 0 || offset > get_atr2(idx)) {
+          err("index out of range");
+        }
+        
+		    $$ = take_reg();
+        int elem_index = idx - get_atr2(idx) + offset;
+        gen_mov(elem_index, $$);
       }
 
 	// & _ID
   | _AMPERSAND _ID
       {
-        int idx = lookup_symbol($2, VAR|PAR);
+        int idx = lookup_symbol($2, VAR|PAR|ARRAY);
         if($$ == NO_INDEX)
           err("'%s' undeclared", $2);
           
@@ -261,7 +372,7 @@ exp
 	// * _ID
   | _ASTERISK _ID
       {
-        int idx = lookup_symbol($2, VAR|PAR);
+        int idx = lookup_symbol($2, VAR|PAR|ARRAY);
         if($$ == NO_INDEX)
           err("'%s' undeclared", $2);
           
