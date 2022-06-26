@@ -19,6 +19,7 @@
   int fun_idx = -1;
   int fcall_idx = -1;
   int lab_num = -1;
+  int loop_num = -1;
   FILE *output;
 %}
 
@@ -30,6 +31,8 @@
 %token <i> _TYPE
 %token _IF
 %token _ELSE
+%token _FOR
+%token _INC
 %token _RETURN
 %token <s> _ID
 %token <s> _INT_NUMBER
@@ -49,7 +52,6 @@
 %nonassoc ONLY_IF
 %nonassoc _ELSE
 
-%nonassoc ONLY_ID
 %nonassoc _AMPERSAND
 %token _ASTERISK
 %%
@@ -139,7 +141,49 @@ statement
   | assignment_statement
   | if_statement
   | return_statement
+  | for_statement
   ;
+  
+for_statement
+	: _FOR
+			{
+				loop_num++;
+				$<i>$ = loop_num;
+			}
+			
+		_LPAREN _ID _ASSIGN literal 
+			{
+				int idx = lookup_symbol($4, VAR|PAR);
+        if(idx == NO_INDEX)
+          err("'%s' undeclared", $4);
+          
+				gen_mov($6,idx);
+				
+        code("\n@for_cmp_%d:", $<i>2);
+			}
+			
+		_SEMICOLON rel_exp 
+			{
+				code("\n\t\t%s\t@for_end_%d", opp_jumps[$9], $<i>2);
+			}
+			
+		_SEMICOLON _ID _INC _RPAREN statement 
+			{
+				int idx = lookup_symbol($12, VAR|PAR);
+        if(idx == NO_INDEX)
+          err("'%s' undeclared", $12);
+        
+        if(get_type(idx) == INT)
+					code("\n\t\tADDS\t");
+				else
+					code("\n\t\tADDU\t");
+        gen_sym_name(idx);
+				code(",$1,");
+				gen_sym_name(idx);
+        code("\n\t\tJMP \t@for_cmp_%d", $<i>2);
+        
+        code("\n@for_end_%d:", $<i>2);
+			}
 
 compound_statement
   : _LBRACKET statement_list _RBRACKET
@@ -165,39 +209,9 @@ assignment_statement
 
 num_exp
   : exp
-
-	// & exp
-  | _AMPERSAND exp
-      {
-		    $$ = take_reg();
-      	code("\n\t\tLOAD\t");
-				gen_sym_name($2);
-				code(",");
-				gen_sym_name($$);
-		    set_atr2($$, $2);
-		    set_type($$, get_type($2)+2);
-      }
-
-
-	// * exp
-  | _ASTERISK exp
-      {
-        if(get_type($2) != PINT && get_type($2) != PUINT)
-          err("operator can't be dereferenced");
-          
-		    $$ = take_reg();
-      	code("\n\t\tUNLOAD\t");
-				gen_sym_name($2);
-				code(",");
-				gen_sym_name($$);
-		    set_type($$, get_type($2)-2);
-      }
-  
   
   | num_exp _AROP exp
       {
-		    printf("\n\n%d, %s\n", get_type($1),get_name($1));
-		    printf("%d, %s\n", get_type($3),get_name($3));
 		    if (get_type($1) != get_type($3)) {
 		      err("invalid operands: arithmetic operation");
         }
@@ -225,6 +239,41 @@ exp
         $$ = lookup_symbol($1, VAR|PAR);
         if($$ == NO_INDEX)
           err("'%s' undeclared", $1);
+      }
+
+	// & _ID
+  | _AMPERSAND _ID
+      {
+        int idx = lookup_symbol($2, VAR|PAR);
+        if($$ == NO_INDEX)
+          err("'%s' undeclared", $2);
+          
+		    $$ = take_reg();
+      	code("\n\t\tLOAD\t");
+				gen_sym_name(idx);
+				code(",");
+				gen_sym_name($$);
+		    set_atr2($$, idx);
+		    set_type($$, get_type(idx)+2);
+      }
+
+
+	// * _ID
+  | _ASTERISK _ID
+      {
+        int idx = lookup_symbol($2, VAR|PAR);
+        if($$ == NO_INDEX)
+          err("'%s' undeclared", $2);
+          
+        if(get_type(idx) != PINT && get_type(idx) != PUINT)
+          err("operator can't be dereferenced");
+          
+		    $$ = take_reg();
+      	code("\n\t\tUNLOAD\t");
+				gen_sym_name(idx);
+				code(",");
+				gen_sym_name($$);
+		    set_type($$, get_type(idx)-2);
       }
 
   | function_call

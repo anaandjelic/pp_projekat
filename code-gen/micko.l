@@ -16,6 +16,7 @@
 "int"                { yylval.i = INT;  return _TYPE; }
 "unsigned"           { yylval.i = UINT; return _TYPE; }
 "else"               { return _ELSE; }
+"for"		             { return _FOR; }
 "return"             { return _RETURN; }
 
 "("                  { return _LPAREN; }
@@ -25,6 +26,7 @@
 ";"                  { return _SEMICOLON; }
 "="                  { return _ASSIGN; }
 
+"++"                 { return _INC; }
 "+"                  { yylval.i = ADD; return _AROP; }
 "-"                  { yylval.i = SUB; return _AROP; }
 

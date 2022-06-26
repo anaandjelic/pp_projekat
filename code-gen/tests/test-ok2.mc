@@ -1,6 +1,6 @@
 //OPIS: dodela lokacije pointeru - unsigned
 //RESULT: 2u
-int main() {
+unsigned main() {
     unsigned a;
     unsigned* x;
     a = 2u;

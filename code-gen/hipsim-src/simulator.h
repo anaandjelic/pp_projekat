@@ -43,16 +43,12 @@ typedef struct _Source {
     int address;    //adresa linije u segmentu koda
 } Source;
 
-typedef struct Content {
-		word value;
-		int32_t* address;
-} Content;
-
 //operand naredbe
 typedef struct _Operand {
     uchar kind;     //vrtsa operanda
     uchar reg;      //(dodatni) registar za operand
-    Content data;   //sadržaj operanda
+    word data;   		//sadržaj operanda
+    word* ptr_data;   		//sadržaj operanda
 } Operand;
 
 //naredba
@@ -94,7 +90,7 @@ int label_index(char* name);
 int use_label(char* name, int line);
 int insert_label(char* name, int address, int line, uchar type);
 void insert_data(Datamem *data, uchar datalen, char *name, int line);
-void add_operand(uchar kind, uchar reg, int data);
+void add_operand(uchar kind, uchar reg, word data);
 void insert_code(uchar inst, uchar type, int line);
 void insert_source_f(char *s);
 int check_global(char *name);
@@ -104,8 +100,8 @@ void check_labels();
 void init_simulator();
 word* getmem(word address);
 char type_char(uchar type);
-Content get_operand(Operand op);
-void set_operand(Operand op, Content data);
+word get_operand(Operand op);
+void set_operand(Operand op, word data);
 void set_flags_signed(quad result);
 void set_flags_unsigned(uquad result);
 void run_once();

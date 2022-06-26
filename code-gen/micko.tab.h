@@ -57,22 +57,23 @@ extern int yydebug;
     _TYPE = 258,                   /* _TYPE  */
     _IF = 259,                     /* _IF  */
     _ELSE = 260,                   /* _ELSE  */
-    _RETURN = 261,                 /* _RETURN  */
-    _ID = 262,                     /* _ID  */
-    _INT_NUMBER = 263,             /* _INT_NUMBER  */
-    _UINT_NUMBER = 264,            /* _UINT_NUMBER  */
-    _LPAREN = 265,                 /* _LPAREN  */
-    _RPAREN = 266,                 /* _RPAREN  */
-    _LBRACKET = 267,               /* _LBRACKET  */
-    _RBRACKET = 268,               /* _RBRACKET  */
-    _ASSIGN = 269,                 /* _ASSIGN  */
-    _SEMICOLON = 270,              /* _SEMICOLON  */
-    _AROP = 271,                   /* _AROP  */
-    _RELOP = 272,                  /* _RELOP  */
-    ONLY_IF = 273,                 /* ONLY_IF  */
-    ONLY_ID = 274,                 /* ONLY_ID  */
-    _AMPERSAND = 275,              /* _AMPERSAND  */
-    _ASTERISK = 276                /* _ASTERISK  */
+    _FOR = 261,                    /* _FOR  */
+    _INC = 262,                    /* _INC  */
+    _RETURN = 263,                 /* _RETURN  */
+    _ID = 264,                     /* _ID  */
+    _INT_NUMBER = 265,             /* _INT_NUMBER  */
+    _UINT_NUMBER = 266,            /* _UINT_NUMBER  */
+    _LPAREN = 267,                 /* _LPAREN  */
+    _RPAREN = 268,                 /* _RPAREN  */
+    _LBRACKET = 269,               /* _LBRACKET  */
+    _RBRACKET = 270,               /* _RBRACKET  */
+    _ASSIGN = 271,                 /* _ASSIGN  */
+    _SEMICOLON = 272,              /* _SEMICOLON  */
+    _AROP = 273,                   /* _AROP  */
+    _RELOP = 274,                  /* _RELOP  */
+    ONLY_IF = 275,                 /* ONLY_IF  */
+    _AMPERSAND = 276,              /* _AMPERSAND  */
+    _ASTERISK = 277                /* _ASTERISK  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
@@ -81,12 +82,12 @@ extern int yydebug;
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 25 "micko.y"
+#line 26 "micko.y"
 
   int i;
   char *s;
 
-#line 90 "micko.tab.h"
+#line 91 "micko.tab.h"
 
 };
 typedef union YYSTYPE YYSTYPE;

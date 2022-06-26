@@ -244,7 +244,7 @@ void add_operand(uchar kind, uchar reg, int data) {
     } else {
         operand[operand_cnt].kind = kind;
         operand[operand_cnt].reg = reg;
-        operand[operand_cnt].data.value = data;
+        operand[operand_cnt].data = data;
         operand_cnt++;
     }
 }
@@ -330,45 +330,43 @@ char type_char(uchar type) {
 }
 
 //vraća vrednost operanda
-Content get_operand(Operand op) {
-		Content content;
+word get_operand(Operand op) {
     switch (op.kind) {
         case OP_REGISTER:
-            content.value = processor.reg[op.reg];
+            return processor.reg[op.reg];
         case OP_INDIRECT:
-            content.value = *getmem(processor.reg[op.reg]);
+            return *getmem(processor.reg[op.reg]);
         case OP_INDEX:
-            content.value = *getmem(processor.reg[op.reg]+op.data.value);
+            return *getmem(processor.reg[op.reg]+op.data);
         case OP_CONSTANT:
-            content = op.data;
+            return op.data;
         case OP_ADDRESS:
-            content = op.data;
+            return op.data;
         case OP_DATA:
-            content.value = *getmem(symtab[op.data.value].address);
+            return *getmem(symtab[op.data].address);
         default: {
             simerror("get_operand fatal error"); // ne bi trebalo da se desi
         }
-        return content;
     }
 }
 
 //postavlja vrednost operanda
-void set_operand(Operand op, Content data) {
+void set_operand(Operand op, word data) {
     switch (op.kind) {
         case OP_REGISTER:
-            processor.reg[op.reg] = data.value;
+            processor.reg[op.reg] = data;
             break;
         case OP_INDIRECT:
-            *getmem(processor.reg[op.reg]) = data.value;
+            *getmem(processor.reg[op.reg]) = data;
             break;
         case OP_INDEX:
-            *getmem(processor.reg[op.reg]+op.data.value) = data.value;
+            *getmem(processor.reg[op.reg]+op.data) = data;
             break;
         case OP_ADDRESS:    //možda ne treba...
             op.data = data;
             break;
         case OP_DATA:
-            *getmem(symtab[op.data.value].address) = data.value;
+            *getmem(symtab[op.data].address) = data;
             break;
         default: {
             simerror("set_operand fatal error"); // ne bi trebalo da se desi
@@ -396,24 +394,22 @@ void set_flags_unsigned(uquad result) {
 void run_once() {
     Instruction *i = &codemem[processor.pc];
     word operand0, operand1;
-    Content content;
     if (processor.halt) return;
     switch (i->inst) {
         case INS_PUSH:
             processor.reg[STACK_POINTER] -= 4;
-            *getmem(processor.reg[STACK_POINTER]) = get_operand(i->op[0]).value;
+            *getmem(processor.reg[STACK_POINTER]) = get_operand(i->op[0]);
             processor.pc++;
             break;
         case INS_POP:
-        		content.value = *getmem(processor.reg[STACK_POINTER]);
-            set_operand( i->op[0], content );
+            set_operand( i->op[0], *getmem(processor.reg[STACK_POINTER]) );
             processor.reg[STACK_POINTER] += 4;
             processor.pc++;
             break;
         case INS_CALL:
             processor.reg[STACK_POINTER] -= 4;
             *getmem(processor.reg[STACK_POINTER]) = processor.pc + 1;
-            processor.pc = symtab[i->op[0].data.value].address;
+            processor.pc = symtab[i->op[0].data].address;
             break;
         case INS_RET:
             processor.pc = *getmem(processor.reg[STACK_POINTER]);
@@ -421,137 +417,129 @@ void run_once() {
             break;
         case INS_CMP:
             if (i->type == SIGNED_TYPE)
-                set_flags_signed((quad)get_operand(i->op[0]).value - (quad)get_operand(i->op[1]).value);
+                set_flags_signed((quad)get_operand(i->op[0]) - (quad)get_operand(i->op[1]));
             else
-                set_flags_unsigned((uquad)(uword)get_operand(i->op[0]).value - (uquad)(uword)get_operand(i->op[1]).value);
+                set_flags_unsigned((uquad)(uword)get_operand(i->op[0]) - (uquad)(uword)get_operand(i->op[1]));
             processor.pc++;
             break;
         case INS_JMP:
-            processor.pc = symtab[i->op[0].data.value].address;
+            processor.pc = symtab[i->op[0].data].address;
             break;
         case INS_JEQ:
             if (processor.zero)
-                processor.pc = symtab[i->op[0].data.value].address;
+                processor.pc = symtab[i->op[0].data].address;
             else
                 processor.pc++;
             break;
         case INS_JNE:
             if (!processor.zero)
-                processor.pc = symtab[i->op[0].data.value].address;
+                processor.pc = symtab[i->op[0].data].address;
             else
                 processor.pc++;
             break;
         case INS_JGT:
             if ( (i->type == SIGNED_TYPE) && (( (~(processor.sign^processor.overflow)) & (~processor.zero) )&1) )
-                processor.pc = symtab[i->op[0].data.value].address;
+                processor.pc = symtab[i->op[0].data].address;
             else if ( (i->type == UNSIGNED_TYPE) && (( (~processor.carry) & (~processor.zero) )&1) )
-                processor.pc = symtab[i->op[0].data.value].address;
+                processor.pc = symtab[i->op[0].data].address;
             else
                 processor.pc++;
             break;
         case INS_JLT:
             if ( (i->type == SIGNED_TYPE) && (( processor.sign^processor.overflow )&1) )
-                processor.pc = symtab[i->op[0].data.value].address;
+                processor.pc = symtab[i->op[0].data].address;
             else if ( (i->type == UNSIGNED_TYPE) && (( processor.carry )&1) )
-                processor.pc = symtab[i->op[0].data.value].address;
+                processor.pc = symtab[i->op[0].data].address;
             else
                 processor.pc++;
             break;
         case INS_JGE:
             if ( (i->type == SIGNED_TYPE) && (( ~(processor.sign^processor.overflow) )&1) )
-                processor.pc = symtab[i->op[0].data.value].address;
+                processor.pc = symtab[i->op[0].data].address;
             else if ( (i->type == UNSIGNED_TYPE) && (( ~processor.carry )&1) )
-                processor.pc = symtab[i->op[0].data.value].address;
+                processor.pc = symtab[i->op[0].data].address;
             else
                 processor.pc++;
             break;
         case INS_JLE:
             if ( (i->type == SIGNED_TYPE) && (( (processor.sign^processor.overflow) | processor.zero )&1) )
-                processor.pc = symtab[i->op[0].data.value].address;
+                processor.pc = symtab[i->op[0].data].address;
             else if ( (i->type == UNSIGNED_TYPE) && (( processor.carry | processor.zero )&1) )
-                processor.pc = symtab[i->op[0].data.value].address;
+                processor.pc = symtab[i->op[0].data].address;
             else
                 processor.pc++;
             break;
         case INS_JC:
             if (processor.carry)
-                processor.pc = symtab[i->op[0].data.value].address;
+                processor.pc = symtab[i->op[0].data].address;
             else
                 processor.pc++;
             break;
         case INS_JNC:
             if (!processor.carry)
-                processor.pc = symtab[i->op[0].data.value].address;
+                processor.pc = symtab[i->op[0].data].address;
             else
                 processor.pc++;
             break;
         case INS_JO:
             if (processor.overflow)
-                processor.pc = symtab[i->op[0].data.value].address;
+                processor.pc = symtab[i->op[0].data].address;
             else
                 processor.pc++;
             break;
         case INS_JNO:
             if (!processor.overflow)
-                processor.pc = symtab[i->op[0].data.value].address;
+                processor.pc = symtab[i->op[0].data].address;
             else
                 processor.pc++;
             break;
         case INS_ADD:
-            operand0 = get_operand(i->op[0]).value;
-            operand1 = get_operand(i->op[1]).value;
-            content.value = operand0 + operand1;
+            operand0 = get_operand(i->op[0]);
+            operand1 = get_operand(i->op[1]);
             if (i->type == SIGNED_TYPE) {
-                set_operand(i->op[2], content);
+                set_operand(i->op[2], operand0 + operand1);
                 set_flags_signed((quad)operand0 + (quad)operand1);
             } else {
-            		content.value =(word)((uword)operand0 + (uword)operand1);
-                set_operand(i->op[2], content);
+                set_operand(i->op[2], (word)((uword)operand0 + (uword)operand1));
                 set_flags_unsigned((uquad)(uword)operand0 + (uquad)(uword)operand1);
             }
             processor.pc++;
             break;
         case INS_SUB:
-            operand0 = get_operand(i->op[0]).value;
-            operand1 = get_operand(i->op[1]).value;
-            content.value = operand0 - operand1;
+            operand0 = get_operand(i->op[0]);
+            operand1 = get_operand(i->op[1]);
             if (i->type == SIGNED_TYPE) {
-                set_operand(i->op[2], content);
+                set_operand(i->op[2], operand0 - operand1);
                 set_flags_signed((quad)operand0 - (quad)operand1);
             } else {
-            		content.value =(word)((uword)operand0 - (uword)operand1);
-                set_operand(i->op[2], content);
+                set_operand(i->op[2], (word)((uword)operand0 - (uword)operand1));
                 set_flags_unsigned((uquad)(uword)operand0 - (uquad)(uword)operand1);
             }
             processor.pc++;
             break;
         case INS_MUL:
-            operand0 = get_operand(i->op[0]).value;
-            operand1 = get_operand(i->op[1]).value;
-            content.value = operand0 * operand1;
+            operand0 = get_operand(i->op[0]);
+            operand1 = get_operand(i->op[1]);
             if (i->type == SIGNED_TYPE) {
-                set_operand(i->op[2], content);
+                set_operand(i->op[2], operand0 * operand1);
                 set_flags_signed((quad)operand0 * (quad)operand1);
             } else {
-            		content.value =(word)((uword)operand0 * (uword)operand1);
-                set_operand(i->op[2], content);
+                set_operand(i->op[2], (word)((uword)operand0 * (uword)operand1));
                 set_flags_unsigned((uquad)(uword)operand0 * (uquad)(uword)operand1);
             }
             processor.pc++;
             break;
         case INS_DIV:
-            operand0 = get_operand(i->op[0]).value;
-            operand1 = get_operand(i->op[1]).value;
-            content.value = operand0 / operand1;
+            operand0 = get_operand(i->op[0]);
+            operand1 = get_operand(i->op[1]);
             if (operand1 == 0) {
                 simerror("Division by zero");
             }
             if (i->type == SIGNED_TYPE) {
-                set_operand(i->op[2], content);
+                set_operand(i->op[2], operand0 / operand1);
                 set_flags_signed((quad)operand0 / (quad)operand1);
             } else {
-            		content.value =(word)((uword)operand0 / (uword)operand1);
-                set_operand(i->op[2], content);
+                set_operand(i->op[2], (word)((uword)operand0 / (uword)operand1));
                 set_flags_unsigned((uquad)(uword)operand0 / (uquad)(uword)operand1);
             }
             processor.pc++;
@@ -561,15 +549,11 @@ void run_once() {
             processor.pc++;
             break;
         case INS_LOAD:
-        		word a = get_operand(i->op[0]).value;
-            content.address = &a;
-            set_operand(i->op[1], content );
+            set_operand(i->op[1], get_operand(i->op[0]));
             processor.pc++;
             break;
         case INS_UNLOAD:
-        		int32_t* b = get_operand(i->op[0]).address;
-        		content.value = *b;
-            set_operand(i->op[1], content);
+            set_operand(i->op[1], get_operand(i->op[0]));
             processor.pc++;
             break;
         case INS_HALT:
