@@ -96,7 +96,7 @@ Terminals, with rules where they appear
     _IF (259) 51
     _ELSE (260) 48
     _FOR (261) 28
-    _INC (262) 28
+    _INC <i> (262) 28
     _RETURN (263) 53
     _ID <s> (264) 5 7 12 13 15 28 30 31 35 36 37 38 44
     _INT_NUMBER <s> (265) 41

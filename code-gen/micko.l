@@ -29,7 +29,8 @@
 ";"                  { return _SEMICOLON; }
 "="                  { return _ASSIGN; }
 
-"++"                 { return _INC; }
+"++"                 { yylval.i = INC; return _INC; }
+"--"                 { yylval.i = DEC; return _INC; }
 ","                  { return _COMMA; }
 "+"                  { yylval.i = ADD; return _AROP; }
 "-"                  { yylval.i = SUB; return _AROP; }

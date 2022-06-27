@@ -37,7 +37,7 @@
 %token _IF
 %token _ELSE
 %token _FOR
-%token _INC
+%token <i> _INC
 %token _RETURN
 %token <s> _ID
 %token <s> _INT_NUMBER
@@ -138,6 +138,7 @@ variable
         else 
            err("redefinition of '%s'", $2);
       }
+      
   | _TYPE _LSB literal _RSB _ID _SEMICOLON
       {
         if(get_type($3) == UINT)
@@ -178,26 +179,30 @@ variable
         }
         iterator = 0;
   		}
-   	literal_list _RBRACKET _SEMICOLON { iterator = 0; }
+   	literal_list _RBRACKET _SEMICOLON 
+		 	{
+		 		if (iterator < array_elem_num)
+           err("too few elements");
+		 	}
   ;
 
 literal_list 
 	: literal
 			{
-				if (iterator > array_elem_num)
-           err("too many elements");
-				if (get_type($1) != get_type(array_first_elem + iterator))
-           err("incompatible types");
-        gen_mov($1, array_first_elem);
+        if (get_type($1) != get_type(array_first_elem + iterator))
+		      err("incompatible types");
+		    gen_mov($1, array_first_elem);
         iterator++;
 			}
 	| literal_list _COMMA literal
 			{
-				if (iterator > array_elem_num)
+				if (iterator >= array_elem_num)
            err("too many elements");
-				if (get_type($3) != get_type(array_first_elem + iterator))
-           err("incompatible types");
-        gen_mov($3, array_first_elem + iterator);
+        else {
+        	if (get_type($3) != get_type(array_first_elem + iterator))
+           	err("incompatible types");
+        	gen_mov($3, array_first_elem + iterator);
+        } 
         iterator++;
 			}
 	;
@@ -224,7 +229,7 @@ for_statement
 			
 		_LPAREN _ID _ASSIGN literal 
 			{
-				int idx = lookup_symbol($4, VAR|PAR|ARRAY);
+				int idx = lookup_symbol($4, VAR|PAR);
         if(idx == NO_INDEX)
           err("'%s' undeclared", $4);
           
@@ -240,14 +245,25 @@ for_statement
 			
 		_SEMICOLON _ID _INC _RPAREN statement 
 			{
-				int idx = lookup_symbol($12, VAR|PAR|ARRAY);
+				int idx = lookup_symbol($12, VAR|PAR);
         if(idx == NO_INDEX)
           err("'%s' undeclared", $12);
+        if(idx != lookup_symbol($4, VAR|PAR))
+          err("Iterators don't match");
         
-        if(get_type(idx) == INT)
-					code("\n\t\tADDS\t");
-				else
-					code("\n\t\tADDU\t");
+        if ($13 == INC) {
+        	if(get_type(idx) == INT)
+						code("\n\t\tADDS\t");
+					else
+						code("\n\t\tADDU\t");
+        }
+        else {
+        	if(get_type(idx) == INT)
+						code("\n\t\tSUBS\t");
+					else
+						code("\n\t\tSUBU\t");
+        }
+        
         gen_sym_name(idx);
 				code(",$1,");
 				gen_sym_name(idx);
@@ -274,6 +290,7 @@ assignment_statement
           	gen_mov($3, idx);
         }
       }
+      
   | _ID _LSB literal _RSB _ASSIGN num_exp _SEMICOLON
       {
         if(get_type($3) == UINT)
@@ -341,7 +358,6 @@ exp
         if(idx == NO_INDEX)
           err("'%s' undeclared", $1);
          
-        print_symtab();
         int offset = atoi(get_name($3));
         if(offset < 0 || offset > get_atr2(idx)) {
           err("index out of range");

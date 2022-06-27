@@ -1,4 +1,4 @@
-//OPIS: ponovljena promenljiva
+//OPIS: * na pogresnom mestu
 int main() {
     int a;
     int *x;

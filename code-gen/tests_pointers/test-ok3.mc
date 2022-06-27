@@ -1,4 +1,4 @@
-//OPIS: num_exp sa dereferenciranjem
+//OPIS: dereferenciranje
 //RESULT: 5
 int main() {
     int a;
